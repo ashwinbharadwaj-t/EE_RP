@@ -155,17 +155,19 @@ def run():
                 )
             elif HEARTBEAT:
                 from datetime import datetime, timezone, timedelta
-                # A manual "Run workflow" click sets this event; always ping then,
-                # so a manual test always gives you Telegram proof.
+                # A manual "Run workflow" click always pings, so a manual test
+                # always gives you Telegram proof.
                 manual = os.environ.get("GITHUB_EVENT_NAME", "") == "workflow_dispatch"
-                # IST = UTC + 5:30. Scheduled "still watching" pings twice a day,
-                # around 2pm and 11pm IST. GitHub runs in UTC.
+                # IST = UTC + 5:30. One "still watching" ping a day, in the 2pm
+                # IST hour. Window is the first 15 min so it fires reliably even
+                # when GitHub delays runs (you'll get ~3 pings across those 15
+                # min at 5-min cadence, once per day).
                 ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
-                scheduled = ist.hour in (14, 23) and ist.minute < 5
+                scheduled = ist.hour == 14 and ist.minute < 15
                 if manual or scheduled:
                     send(
                         "Estonia watcher: still running, no residence "
-                        "residence permit slot for New Delhi yet."
+                        "permit slot for New Delhi yet."
                     )
 
         browser.close()
