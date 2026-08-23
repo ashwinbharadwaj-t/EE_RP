@@ -30,6 +30,9 @@ TG_CHAT_ID = os.environ.get("TG_CHAT_ID", "")
 # so you can confirm it's reading the right dropdown. Turn off once confirmed.
 DEBUG_LIST = os.environ.get("DEBUG_LIST", "true").lower() == "true"
 
+# When true, send an hourly "still watching, nothing yet" heartbeat.
+HEARTBEAT = os.environ.get("HEARTBEAT", "false").lower() == "true"
+
 
 def send(text):
     if not TG_TOKEN or not TG_CHAT_ID:
@@ -139,6 +142,20 @@ def run():
                     + listing
                     + "\n\n(Reply here once confirmed and I'll silence these.)"
                 )
+            elif HEARTBEAT:
+                from datetime import datetime, timezone, timedelta
+                # A manual "Run workflow" click sets this event; always ping then,
+                # so a manual test always gives you Telegram proof.
+                manual = os.environ.get("GITHUB_EVENT_NAME", "") == "workflow_dispatch"
+                # IST = UTC + 5:30. Scheduled "still watching" pings twice a day,
+                # around 2pm and 11pm IST. GitHub runs in UTC.
+                ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+                scheduled = ist.hour in (14, 23) and ist.minute < 20
+                if manual or scheduled:
+                    send(
+                        "Estonia watcher: still running, no residence "
+                        "permit slot for New Delhi yet."
+                    )
 
         browser.close()
 
