@@ -4,7 +4,7 @@ on:
   schedule:
     # every 20 minutes (GitHub cron is UTC; min interval is ~5 min but
     # scheduled jobs can be delayed under load, which is fine here)
-    - cron: "*/20 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}   # lets you run it manually from the Actions tab
 
 jobs:
