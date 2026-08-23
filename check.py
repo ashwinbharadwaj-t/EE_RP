@@ -21,7 +21,11 @@ from playwright.sync_api import sync_playwright
 URL = "https://broneering.mfa.ee/en/"
 REPRESENTATION = "Embassy of the Republic of Estonia in New Delhi"
 PERSONS = "1"
-MATCH = "residence permit"  # case-insensitive substring
+# Services to watch for (case-insensitive substrings). Add more lines any time.
+MATCHES = [
+    "residence permit",
+    "d-visa",
+]
 
 TG_TOKEN = os.environ.get("TG_TOKEN", "")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID", "")
@@ -122,16 +126,24 @@ def run():
         options = get_service_options(page)
         print("Service options seen:", options)
 
-        found = any(MATCH in o.lower() for o in options)
+        # find which watched services are currently available
+        hits = []
+        for opt in options:
+            for m in MATCHES:
+                if m in opt.lower():
+                    hits.append(opt)
+                    break
 
-        if found:
+        if hits:
+            opened = "\n".join("- " + h for h in hits)
             send(
-                "RESIDENCE PERMIT SLOT OPEN (New Delhi)\n\n"
-                "'Application for Residence Permit' is now selectable at:\n"
+                "SLOT OPEN (New Delhi)\n\n"
+                "These watched service(s) are now selectable:\n"
+                + opened
+                + "\n\nGo book manually now:\n"
                 + URL
-                + "\n\nBook it manually now."
             )
-            print("MATCH FOUND -> alerted")
+            print("MATCH FOUND -> alerted:", hits)
         else:
             print("Not available yet.")
             if DEBUG_LIST:
@@ -154,7 +166,7 @@ def run():
                 if manual or scheduled:
                     send(
                         "Estonia watcher: still running, no residence "
-                        "permit slot for New Delhi yet."
+                        "watched slot for New Delhi yet (residence permit & D-visa)."
                     )
 
         browser.close()
