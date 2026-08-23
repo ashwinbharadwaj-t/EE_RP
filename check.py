@@ -24,7 +24,6 @@ PERSONS = "1"
 # Services to watch for (case-insensitive substrings). Add more lines any time.
 MATCHES = [
     "residence permit",
-    "d-visa",
 ]
 
 TG_TOKEN = os.environ.get("TG_TOKEN", "")
@@ -166,7 +165,7 @@ def run():
                 if manual or scheduled:
                     send(
                         "Estonia watcher: still running, no residence "
-                        "watched slot for New Delhi yet (residence permit & D-visa)."
+                        "residence permit slot for New Delhi yet."
                     )
 
         browser.close()
