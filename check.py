@@ -162,7 +162,7 @@ def run():
                 # IST = UTC + 5:30. Scheduled "still watching" pings twice a day,
                 # around 2pm and 11pm IST. GitHub runs in UTC.
                 ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
-                scheduled = ist.hour in (14, 23) and ist.minute < 20
+                scheduled = ist.hour in (14, 23) and ist.minute < 5
                 if manual or scheduled:
                     send(
                         "Estonia watcher: still running, no residence "
