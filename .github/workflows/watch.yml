@@ -1,0 +1,31 @@
+name: estonia-slot-watch
+
+on:
+  schedule:
+    # every 20 minutes (GitHub cron is UTC; min interval is ~5 min but
+    # scheduled jobs can be delayed under load, which is fine here)
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}   # lets you run it manually from the Actions tab
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright requests
+          python -m playwright install --with-deps chromium
+
+      - name: Run checker
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          DEBUG_LIST: "true"
+        run: python check.py
