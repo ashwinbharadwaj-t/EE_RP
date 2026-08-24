@@ -24,6 +24,7 @@ PERSONS = "1"
 # Services to watch for (case-insensitive substrings). Add more lines any time.
 MATCHES = [
     "residence permit",
+    "d-visa",
 ]
 
 TG_TOKEN = os.environ.get("TG_TOKEN", "")
