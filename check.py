@@ -6,6 +6,7 @@ Watches specifically for "Long-stay visa (D-visa) application".
 import os
 import sys
 import requests
+from datetime import datetime, timezone, timedelta
 from playwright.sync_api import sync_playwright
 
 URL = "https://broneering.mfa.ee/en/"
@@ -24,12 +25,12 @@ TARGET_KEYWORDS = [
 TG_TOKEN = os.environ.get("TG_TOKEN", "").strip()
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID", "").strip()
 DEBUG_LIST = os.environ.get("DEBUG_LIST", "false").lower() == "true"
-HEARTBEAT = os.environ.get("HEARTBEAT", "false").lower() == "true"
+HEARTBEAT = os.environ.get("HEARTBEAT", "true").lower() == "true"
 
 
 def send(text: str):
     if not TG_TOKEN or not TG_CHAT_ID:
-        print("[Warning] No Telegram credentials provided; message not sent:\n" + text)
+        print("[Warning] Telegram credentials missing. Message not sent:\n" + text)
         return
     try:
         url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
@@ -39,13 +40,12 @@ def send(text: str):
         if not res.get("ok"):
             print(f"[Telegram Error] {res.get('error_code')}: {res.get('description')}")
         else:
-            print("[Telegram] Notification successfully delivered.")
+            print("[Telegram] Status/Alert message sent successfully.")
     except Exception as e:
         print(f"[Telegram Error] Request failed: {e}")
 
 
 def get_service_options(page):
-    """Finds and extracts options from the reactive consular service dropdown."""
     selects = page.query_selector_all("select")
     best_options = []
 
@@ -54,7 +54,6 @@ def get_service_options(page):
         opts = [o for o in opts if o]
         joined = " ".join(opts).lower()
 
-        # Skip Embassy selection and Person Count dropdowns
         if "embassy of the republic" in joined or "consular mission" in joined:
             continue
         if opts and all(o.strip().isdigit() for o in opts):
@@ -72,12 +71,12 @@ def run():
         page = browser.new_page()
         page.set_default_timeout(60000)
 
-        print(f"Loading {URL}...")
+        print(f"Checking {URL}...")
         page.goto(URL, wait_until="networkidle")
 
         selects = page.query_selector_all("select")
         if not selects:
-            send("⚠️ Estonia Watcher Alert: No dropdowns detected. Page layout might have changed.")
+            send("⚠️ Estonia Watcher Alert: Portal dropdowns not found. The site layout may have changed.")
             browser.close()
             sys.exit(1)
 
@@ -94,17 +93,14 @@ def run():
                     selected = True
                     break
 
-        if not selected:
-            print("Failed to find and select New Delhi.")
-
-        # 2. Wait for reactive dropdown data to load
+        # 2. Wait for reactive option load
         page.wait_for_timeout(3000)
         try:
             page.wait_for_load_state("networkidle")
         except Exception:
             pass
 
-        # 3. Select Person count if prompt is present
+        # 3. Handle person count
         for sel in page.query_selector_all("select"):
             opts = [o.inner_text().strip() for o in sel.query_selector_all("option")]
             if opts and all(o.isdigit() for o in opts if o):
@@ -116,17 +112,17 @@ def run():
 
         page.wait_for_timeout(2000)
 
-        # 4. Check available services in the dropdown
+        # 4. Read active options
         options = get_service_options(page)
         print("Visible Service Options:", options)
 
         hits = []
         for opt in options:
             opt_lower = opt.lower()
-            if any(keyword in opt_lower for keyword in TARGET_KEYWORDS):
+            if any(k in opt_lower for k in TARGET_KEYWORDS):
                 hits.append(opt)
 
-        # 5. Send Alert or Heartbeat
+        # 5. Notifications
         if hits:
             opened_str = "\n".join("- " + h for h in hits)
             send(
@@ -143,19 +139,25 @@ def run():
                 listing = "\n".join("- " + o for o in options) if options else "(No services visible)"
                 send(
                     "🔍 Estonia Watcher (Debug Report - New Delhi)\n\n"
-                    "D-Visa option not open yet. Current visible dropdown entries:\n"
+                    "D-Visa option is not open. Current visible dropdown entries:\n"
                     f"{listing}"
                 )
             elif HEARTBEAT:
-                from datetime import datetime, timezone, timedelta
-                manual = os.environ.get("GITHUB_EVENT_NAME", "") == "workflow_dispatch"
+                now_ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+                is_manual = os.environ.get("GITHUB_EVENT_NAME", "") == "workflow_dispatch"
                 
-                # Daily ping at 14:00 IST (UTC+5:30)
-                ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
-                scheduled = ist.hour == 14 and ist.minute < 10
+                # Triggers between 14:00 and 14:20 IST (2:00 PM to 2:20 PM)
+                is_daily_2pm_window = (now_ist.hour == 14 and now_ist.minute < 20)
 
-                if manual or scheduled:
-                    send("✅ Estonia Watcher: Running normally. No D-Visa option in New Delhi dropdown yet.")
+                if is_manual or is_daily_2pm_window:
+                    listing = "\n".join("- " + o for o in options) if options else "(No services visible)"
+                    time_str = now_ist.strftime("%d %b %Y, %I:%M %p IST")
+                    send(
+                        f"📊 Daily Status Report ({time_str})\n\n"
+                        "Status: Watcher running normally.\n"
+                        "D-Visa Slots: ❌ Not open yet.\n\n"
+                        f"Current visible options:\n{listing}"
+                    )
 
         browser.close()
 
