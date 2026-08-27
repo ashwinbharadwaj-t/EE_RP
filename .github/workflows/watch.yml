@@ -2,8 +2,8 @@ name: estonia-dvisa-watch
 
 on:
   schedule:
-    # Runs every 5 minutes
-    - cron: "*/5 * * * *"
+    # Runs every 10 minutes (UTC)
+    - cron: "*/10 * * * *"
   workflow_dispatch: {}
 
 jobs:
